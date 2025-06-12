@@ -30,6 +30,12 @@ LIB_DIRS = -L$(THIRD_PARTY_DIR)/build/libharu/lib \
            -L$(THIRD_PARTY_DIR)/build/zlib/lib \
            -L$(THIRD_PARTY_DIR)/build/openjpeg/lib
 
+# 添加运行时库路径
+RPATH_FLAGS = -Wl,-rpath,$(CURDIR)/$(THIRD_PARTY_DIR)/build/libharu/lib \
+              -Wl,-rpath,$(CURDIR)/$(THIRD_PARTY_DIR)/build/libpng/lib \
+              -Wl,-rpath,$(CURDIR)/$(THIRD_PARTY_DIR)/build/zlib/lib \
+              -Wl,-rpath,$(CURDIR)/$(THIRD_PARTY_DIR)/build/openjpeg/lib
+
 # 定义链接库
 LIBS = -lhpdf -lpng -lz -lopenjp2 -lm
 
@@ -41,7 +47,7 @@ all: $(BUILD_DIR) third_party $(TARGET_EXEC)
 
 # 编译可执行文件
 $(TARGET_EXEC): $(OBJS)
-	$(CXX) $(CFLAGS) -o $@ $^ $(LIB_DIRS) $(LIBS)
+	$(CXX) $(CFLAGS) -o $@ $^ $(LIB_DIRS) $(RPATH_FLAGS) $(LIBS)
 
 # 编译对象文件
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.cpp
