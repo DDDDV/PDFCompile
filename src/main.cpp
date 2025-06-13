@@ -28,8 +28,12 @@ TIFF* ReadTiffFile(){
     return tif;
 }
 
-HPDF_STATUS Page_DrawImage(HPDF_Page page, HPDF_Image image){
-    
+HPDF_STATUS Page_DrawImage(HPDF_Page page, HPDF_Image image, int ppi){
+    HPDF_REAL width = HPDF_Image_GetWidth(image);
+    HPDF_REAL height = HPDF_Image_GetHeight(image);
+    HPDF_Page_DrawImage(page, image, 0, 0, width*72/ppi, height*72/ppi);
+    printf("draw image success\n");
+    return HPDF_OK;
 }
 
 int main(){
@@ -68,8 +72,8 @@ int main(){
     HPDF_Doc pdf;
     pdf = HPDF_New(error_handler, NULL);
 
-    HPDF_Image image = HPDF_Image_LoadRawImageFromMem(pdf->mmgr, image_data, pdf->xref, tif_file_info.width, tif_file_info.height, color_space, tif_file_info.spp);
-    if (!image) {
+    HPDF_Image text_image = HPDF_Image_LoadRawImageFromMem(pdf->mmgr, image_data, pdf->xref, tif_file_info.width, tif_file_info.height, color_space, tif_file_info.spp);
+    if (!text_image) {
         HPDF_CheckError(&pdf->error);
         free(image_data);
         TIFFClose(tif);
@@ -80,7 +84,13 @@ int main(){
     
     HPDF_Page page = HPDF_AddPage(pdf);
     HPDF_Page_SetSize(page, HPDF_PAGE_SIZE_A4, HPDF_PAGE_PORTRAIT);
-    HPDF_Page_DrawImage(page, image, 0, 0, tif_file_info.width, tif_file_info.height);
+    
+    HPDF_Image back_image = HPDF_LoadJpegImageFromFile(pdf, "/root/workspace/PDFCompile/resources/testfiles-img/A1out2.jpeg");
+    Page_DrawImage(page, back_image, 600);
+
+    HPDF_Image masked_text = HPDF_Image_LoadRawImageFromMem(pdf->mmgr, image_data, pdf->xref, tif_file_info.width, tif_file_info.height, color_space, tif_file_info.spp);
+    HPDF_Image_SetMaskImage(masked_text, text_image);
+    Page_DrawImage(page, masked_text, 600);
     HPDF_STATUS status = HPDF_SaveToFile(pdf, "output.pdf");
 
     if (status != HPDF_OK) {
