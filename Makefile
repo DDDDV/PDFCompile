@@ -11,6 +11,8 @@ LIBPNG_DIR = $(THIRD_PARTY_DIR)/libpng-libpng16
 LIBHARU_DIR = $(THIRD_PARTY_DIR)/libharu-libharu-555d4c0
 OPENJPEG_DIR = $(THIRD_PARTY_DIR)/openjpeg-master
 LIBTIFF_DIR = $(THIRD_PARTY_DIR)/libtiff-master
+LEPTONICA_DIR = $(THIRD_PARTY_DIR)/leptonica-master
+
 
 # 修正源文件路径
 SRCS = $(wildcard $(SRC_DIR)/*.cpp)
@@ -24,24 +26,27 @@ INCLUDE_DIRS = -I$(LIBHARU_DIR)/include \
                -I$(THIRD_PARTY_DIR)/build/libharu/include \
                -I$(THIRD_PARTY_DIR)/build/libpng/include \
                -I$(THIRD_PARTY_DIR)/build/zlib/include \
-			   -I$(THIRD_PARTY_DIR)/build/libtiff/include
+			   -I$(THIRD_PARTY_DIR)/build/libtiff/include \
+			   -I$(THIRD_PARTY_DIR)/build/leptonica/include/leptonica
 
 # 定义库文件路径
 LIB_DIRS = -L$(THIRD_PARTY_DIR)/build/libharu/lib \
            -L$(THIRD_PARTY_DIR)/build/libpng/lib \
            -L$(THIRD_PARTY_DIR)/build/zlib/lib \
            -L$(THIRD_PARTY_DIR)/build/openjpeg/lib \
-		   -L$(THIRD_PARTY_DIR)/build/libtiff/lib
+		   -L$(THIRD_PARTY_DIR)/build/libtiff/lib \
+		   -L$(THIRD_PARTY_DIR)/build/leptonica/lib 
 
 # 添加运行时库路径
 RPATH_FLAGS = -Wl,-rpath,$(CURDIR)/$(THIRD_PARTY_DIR)/build/libharu/lib \
               -Wl,-rpath,$(CURDIR)/$(THIRD_PARTY_DIR)/build/libpng/lib \
               -Wl,-rpath,$(CURDIR)/$(THIRD_PARTY_DIR)/build/zlib/lib \
               -Wl,-rpath,$(CURDIR)/$(THIRD_PARTY_DIR)/build/openjpeg/lib \
-			  -Wl,-rpath,$(CURDIR)/$(THIRD_PARTY_DIR)/build/libtiff/lib 
+			  -Wl,-rpath,$(CURDIR)/$(THIRD_PARTY_DIR)/build/libtiff/lib \
+			  -Wl,-rpath,$(CURDIR)/$(THIRD_PARTY_DIR)/build/leptonica/lib 
 
 # 定义链接库
-LIBS = -lhpdf -lpng -lz -lopenjp2 -lm -ltiff
+LIBS = -lhpdf -lleptonica -ltiff -lopenjp2 -lpng -lz  -lm 
 
 # 定义可执行程序名称
 TARGET_EXEC = $(BUILD_DIR)/pdf
@@ -57,7 +62,7 @@ $(TARGET_EXEC): $(OBJS)
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.cpp
 	$(CXX) $(CFLAGS) $(INCLUDE_DIRS) -c $< -o $@
 
-third_party: libharu openjpeg libtiff
+third_party: libharu openjpeg libtiff leptonica
 
 # 创建构建目录
 $(BUILD_DIR):
@@ -81,6 +86,9 @@ libtiff:
 libharu: libpng
 	cd $(LIBHARU_DIR) && ./build.sh
 
+leptonica:
+	cd $(LEPTONICA_DIR) && ./build.sh
+
 # 清理
 clean:
 	rm -rf $(BUILD_DIR)
@@ -91,6 +99,7 @@ clean-all:
 	cd $(LIBPNG_DIR) && rm -rf build
 	cd $(LIBHARU_DIR) && rm -rf build
 	cd $(THIRD_PARTY_DIR) && rm -rf build
+	cd $(LEPTONICA_DIR) && rm -rf build
 	
 
 # 声明伪目标
