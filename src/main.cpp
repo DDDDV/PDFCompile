@@ -1,16 +1,98 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include <setjmp.h>
-
 #include "headers.h"
+#include "tools.h"
+// 新增函数：输出TIFF图像信息
 
-void ShowVersion(){
-    printf("tiff version %s\n", TIFFGetVersion());
-    printf("HPDF version %s\n", HPDF_GetVersion());
-    printf("jpeg version %s\n", opj_version());
-    printf("leptonica version %s\n", getLeptonicaVersion());
+jmp_buf env;
+
+void error_handler (HPDF_STATUS   error_no,
+               HPDF_STATUS   detail_no,
+               void         *user_data)
+{
+    (void) user_data; /* Not used */
+    printf ("ERROR: error_no=%04X, detail_no=%u\n", (HPDF_UINT)error_no,
+                (HPDF_UINT)detail_no);
+    longjmp(env, 1);
 }
+
+TIFF* ReadTiffFile(){
+    TIFF* tif = TIFFOpen("/root/workspace/PDFCompile/resources/testfiles-img/mask.tiff", "r");
+    // 获取图像信息
+    TIFFGetField(tif, TIFFTAG_IMAGEWIDTH, &tif_file_info.width);
+    TIFFGetField(tif, TIFFTAG_IMAGELENGTH, &tif_file_info.height);
+    TIFFGetField(tif, TIFFTAG_BITSPERSAMPLE, &tif_file_info.bps);
+    TIFFGetField(tif, TIFFTAG_SAMPLESPERPIXEL, &tif_file_info.spp);
+    TIFFGetField(tif, TIFFTAG_PHOTOMETRIC, &tif_file_info.photometric);
+    // 调用专门的输出函数
+    PrintTiffInfo(&tif_file_info);
+    printf("read tiff file success\n");
+    return tif;
+}
+
+HPDF_STATUS Page_DrawImage(HPDF_Page page, HPDF_Image image){
+    
+}
+
 int main(){
     ShowVersion();
+    TIFF* tif = ReadTiffFile();
+    tmsize_t scanline_size = TIFFScanlineSize(tif);
+    // printf("tiff scan line size is %d\n", scanline_size); //638
+    unsigned char* image_data = (unsigned char*)malloc(scanline_size * tif_file_info.height);
+    if (image_data == NULL) {
+        fprintf(stderr, "Failed to allocate memory for TIFF image data.\n");
+        TIFFClose(tif);
+        return EXIT_FAILURE;
+    }
+    for(uint32 row = 0; row < tif_file_info.height; row++){
+        TIFFReadScanline(tif, image_data + row * scanline_size, row, 0);
+    }
+
+    HPDF_ColorSpace color_space;
+    switch(tif_file_info.photometric) {
+        case PHOTOMETRIC_MINISBLACK:
+            color_space = HPDF_CS_DEVICE_GRAY;
+            break;
+        case PHOTOMETRIC_RGB:
+            color_space = HPDF_CS_DEVICE_RGB;
+            break;
+        // case PHOTOMETRIC_CMYK:
+        //     color_space = HPDF_CS_DEVICE_CMYK;
+        //     break;
+        default:
+            fprintf(stderr, "Unsupported photometric interpretation: %u\n", tif_file_info.photometric);
+            free(image_data);
+            TIFFClose(tif);
+            return EXIT_FAILURE;
+    }
+
+    HPDF_Doc pdf;
+    pdf = HPDF_New(error_handler, NULL);
+
+    HPDF_Image image = HPDF_Image_LoadRawImageFromMem(pdf->mmgr, image_data, pdf->xref, tif_file_info.width, tif_file_info.height, color_space, tif_file_info.spp);
+    if (!image) {
+        HPDF_CheckError(&pdf->error);
+        free(image_data);
+        TIFFClose(tif);
+        HPDF_Free(pdf);
+        return EXIT_FAILURE;
+    }
+
+    
+    HPDF_Page page = HPDF_AddPage(pdf);
+    HPDF_Page_SetSize(page, HPDF_PAGE_SIZE_A4, HPDF_PAGE_PORTRAIT);
+    HPDF_Page_DrawImage(page, image, 0, 0, tif_file_info.width, tif_file_info.height);
+    HPDF_STATUS status = HPDF_SaveToFile(pdf, "output.pdf");
+
+    if (status != HPDF_OK) {
+        HPDF_Free(pdf);
+        free(image_data);
+        TIFFClose(tif);
+        return EXIT_FAILURE;
+    }
+    HPDF_Free(pdf);
+    free(image_data);
+    TIFFClose(tif);
+    printf("PDF created successfully with the TIFF image.\n");
+
+    return 0;
 }
