@@ -30,14 +30,3 @@
 *.exe
 *.out
 *.app
-
-/.vscode/
-/.vs/
-/x64/
-/.build/
-/third_party/build/
-/third_party/libtiff-master/build/libtiff/
-/third_party/*/build/
-!/third_party/*/litbiff/build/
-
-
