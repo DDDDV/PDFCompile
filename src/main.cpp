@@ -14,8 +14,8 @@ void error_handler (HPDF_STATUS   error_no,
     longjmp(env, 1);
 }
 
-TIFF* ReadTiffFile(){
-    TIFF* tif = TIFFOpen("/root/workspace/PDFCompile/resources/testfiles-img/mask.tiff", "r");
+TIFF* ReadTiffFile(const char* tiff_filename){
+    TIFF* tif = TIFFOpen(tiff_filename, "r");
     // 获取图像信息
     TIFFGetField(tif, TIFFTAG_IMAGEWIDTH, &tif_file_info.width);
     TIFFGetField(tif, TIFFTAG_IMAGELENGTH, &tif_file_info.height);
@@ -36,9 +36,11 @@ HPDF_STATUS Page_DrawImage(HPDF_Page page, HPDF_Image image, int ppi){
     return HPDF_OK;
 }
 
-int main(){
+int main(int argc, char **argv){
     ShowVersion();
-    TIFF* tif = ReadTiffFile();
+    const char* background_file_jpeg = argv[1];
+    const char* foreground_file_tiff = argv[2];
+    TIFF* tif = ReadTiffFile(foreground_file_tiff);
     tmsize_t scanline_size = TIFFScanlineSize(tif);
     // printf("tiff scan line size is %d\n", scanline_size); //638
     unsigned char* image_data = (unsigned char*)malloc(scanline_size * tif_file_info.height);
@@ -59,9 +61,6 @@ int main(){
         case PHOTOMETRIC_RGB:
             color_space = HPDF_CS_DEVICE_RGB;
             break;
-        // case PHOTOMETRIC_CMYK:
-        //     color_space = HPDF_CS_DEVICE_CMYK;
-        //     break;
         default:
             fprintf(stderr, "Unsupported photometric interpretation: %u\n", tif_file_info.photometric);
             free(image_data);
@@ -71,8 +70,21 @@ int main(){
 
     HPDF_Doc pdf;
     pdf = HPDF_New(error_handler, NULL);
-
-    HPDF_Image text_image = HPDF_Image_LoadRawImageFromMem(pdf->mmgr, image_data, pdf->xref, tif_file_info.width, tif_file_info.height, color_space, tif_file_info.spp);
+    HPDF_SetCompressionMode(pdf, HPDF_COMP_ALL);
+    // 确保这是1位图像才能使用HPDF_Image_LoadRaw1BitImageFromMem
+    if (tif_file_info.bps != 1) {
+        fprintf(stderr, "Error: HPDF_Image_LoadRaw1BitImageFromMem requires 1-bit image, but got %d bits per sample\n", tif_file_info.bps);
+        free(image_data);
+        TIFFClose(tif);
+        HPDF_Free(pdf);
+        return EXIT_FAILURE;
+    }
+    
+    // 计算每行的字节数（1位图像）
+    HPDF_UINT line_width = (tif_file_info.width + 7) / 8;
+    
+    // 使用HPDF_Image_LoadRaw1BitImageFromMem加载1位图像
+    HPDF_Image text_image = HPDF_Image_LoadRaw1BitImageFromMem(pdf, image_data, tif_file_info.width, tif_file_info.height, line_width, HPDF_TRUE, HPDF_TRUE);
     if (!text_image) {
         HPDF_CheckError(&pdf->error);
         free(image_data);
@@ -85,10 +97,10 @@ int main(){
     HPDF_Page page = HPDF_AddPage(pdf);
     HPDF_Page_SetSize(page, HPDF_PAGE_SIZE_A4, HPDF_PAGE_PORTRAIT);
     
-    HPDF_Image back_image = HPDF_LoadJpegImageFromFile(pdf, "/root/workspace/PDFCompile/resources/testfiles-img/A1out2.jpeg");
+    HPDF_Image back_image = HPDF_LoadJpegImageFromFile(pdf, background_file_jpeg);
     Page_DrawImage(page, back_image, 600);
 
-    HPDF_Image masked_text = HPDF_Image_LoadRawImageFromMem(pdf->mmgr, image_data, pdf->xref, tif_file_info.width, tif_file_info.height, color_space, tif_file_info.spp);
+    HPDF_Image masked_text = HPDF_Image_LoadRaw1BitImageFromMem(pdf, image_data, tif_file_info.width, tif_file_info.height, line_width, HPDF_TRUE, HPDF_TRUE);
     HPDF_Image_SetMaskImage(masked_text, text_image);
     Page_DrawImage(page, masked_text, 600);
     HPDF_STATUS status = HPDF_SaveToFile(pdf, "output.pdf");
