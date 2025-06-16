@@ -3,6 +3,7 @@
 
 # build directories
 /build*
+!/build.sh
 /.cppan*
 /.sw*
 /win*

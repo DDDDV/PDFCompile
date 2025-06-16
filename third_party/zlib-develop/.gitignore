@@ -24,6 +24,7 @@
 /zlib.pc
 /configure.log
 /build
+!/build.sh
 
 .DS_Store
 .vs

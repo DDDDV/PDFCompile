@@ -79,4 +79,6 @@ test/o-*
 .idea
 .vs
 cmake-build*
+build*
+!/build.sh
 
