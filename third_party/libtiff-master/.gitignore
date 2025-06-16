@@ -79,6 +79,6 @@ test/o-*
 .idea
 .vs
 cmake-build*
-build*
-!/build.sh
-
+build/libtiff
+!build.sh
+!build
