@@ -23,7 +23,7 @@ set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/modules)
 # command line options
 # =======================================================================
 option(BUILD_SHARED_LIBS "Build shared libraries (.dll/.so) instead of static ones (.lib/.a)" ON)
-option(LIBHPDF_EXAMPLES "Build libharu examples" ON)
+option(LIBHPDF_EXAMPLES "Build libharu examples" OFF)
 option(LIBHPDF_DEBUG "Enable HPDF Debug")
 option(LIBHPDF_DEBUG_TRACE "Enable HPDF Debug trace")
 
