@@ -80,5 +80,6 @@ test/o-*
 .vs
 cmake-build*
 build/libtiff
+
 !build.sh
-!build
+!build/
